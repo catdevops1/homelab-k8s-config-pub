@@ -1,0 +1,8 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: descheduler
+  namespace: kube-system
+spec:
+  # Run every 30 minutes - less disruptive
+  schedule: "*/30 * * * *"

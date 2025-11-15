@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: descheduler
+  namespace: kube-system
+spec:
+  # Run every 5 minutes for faster rebalancing
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: descheduler
+            command:
+            - /bin/descheduler
+            - --policy-config-file=/policy/policy.yaml
+            - --v=4
+            - --descheduling-interval=3m
