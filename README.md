@@ -1,38 +1,92 @@
-# Homelab Kubernetes Configuration (Public)
+# Homelab Kubernetes Infrastructure (Public)
+Reusable, production-tested Kubernetes infrastructure components for bare-metal homelab clusters.
 
-Reusable Kubernetes configurations for homelab clusters. Production-tested templates for:
+## Infrastructure Components
 
-- **Descheduler**: Automatic pod rebalancing across nodes
-- **Node Labels**: Organize nodes by reliability and workload type
-- **GitOps Ready**: Kustomize-based with ArgoCD examples
+### Longhorn Distributed Storage
+- **3-way replication** across nodes for high availability
+- **Automatic failover** for persistent volumes
+- **GitOps deployment** via ArgoCD
+- Zero single points of failure for stateful applications
+- See [docs/longhorn-migration.md](docs/longhorn-migration.md) for implementation details
 
-## Perfect For
+### Descheduler
+- Automatic pod rebalancing across nodes
+- Optimizes cluster resource utilization
+- Handles node maintenance scenarios
 
-- Homelabs with intermittent power (UPS on some nodes, not others)
-- Multi-node clusters with different hardware specs
-- Learning Kubernetes best practices
-- Bare-metal clusters
+### Node Labels
+- Organize nodes by reliability and workload type
+- Supports UPS-backed vs non-UPS nodes
+- Custom scheduling policies
 
-## Quick Start
-```bash
-# Deploy descheduler with default settings
-kubectl apply -k descheduler/base/
-
-# Or use a pre-configured example
-kubectl apply -k descheduler/examples/aggressive/
+## Repository Structure
+```
+├── argocd/
+│   └── applications/          # ArgoCD Application manifests
+│       ├── descheduler-app.yaml
+│       └── longhorn-app.yaml
+├── descheduler/
+│   └── overlays/production/   # Descheduler configuration
+├── longhorn/
+│   └── overlays/production/   # Longhorn distributed storage
+├── node-labels/               # Node labeling scripts
+├── docs/                      # Documentation
+│   └── longhorn-migration.md  # Storage migration guide
+└── scripts/                   # Utility scripts
 ```
 
-## What's Inside
+## Quick Start
 
-- `/descheduler/base/` - Core descheduler manifests
-- `/descheduler/examples/` - Pre-configured scenarios
-- `/scripts/` - Utility scripts for node management
-- `/docs/` - Detailed guides and explanations
+### Deploy Longhorn (Distributed Storage)
+```bash
+kubectl apply -f argocd/applications/longhorn-app.yaml
+```
 
-## Use Cases
+### Deploy Descheduler
+```bash
+kubectl apply -f argocd/applications/descheduler-app.yaml
+```
 
-See [docs/use-cases.md](docs/use-cases.md) for detailed scenarios.
+### Apply Node Labels
+```bash
+./node-labels/apply-labels.sh
+```
 
-## License
+## Cluster Details
 
-MIT - Use freely in your homelab!
+**Environment:** Bare-metal Kubernetes  
+**OS:** Ubuntu 24.04 LTS  
+**Kubernetes:** v1.33.3  
+**Container Runtime:** containerd  
+**Nodes:** 4-node cluster (1 control-plane, 3 workers)
+
+## Production Applications
+
+This infrastructure supports multiple production applications including:
+- Business management platforms
+- Asset tracking systems
+- Invoice and billing applications
+- Internal tools and dashboards
+## Key Features
+
+- **High Availability:** Longhorn 3-way replication eliminates single points of failure
+- **GitOps Workflow:** All infrastructure as code, managed via ArgoCD
+- **Automated Operations:** Descheduler handles pod rebalancing automatically
+- **Production-Grade:** Running real business applications with zero downtime SLA
+
+## Documentation
+
+- [Longhorn Migration Guide](docs/longhorn-migration.md) - Complete walkthrough of migrating from hostPath to distributed storage
+
+## Future Roadmap
+
+- [ ] Longhorn backup configuration (S3/NFS)
+- [ ] Prometheus & Grafana monitoring stack
+- [ ] Cert-manager automation
+- [ ] MetalLB load balancer configuration
+- [ ] NGINX Ingress controller docs
+
+
+  
+**Last Updated:** December 22, 2025
