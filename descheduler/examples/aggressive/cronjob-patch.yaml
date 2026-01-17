@@ -16,4 +16,4 @@ spec:
             - /bin/descheduler
             - --policy-config-file=/policy/policy.yaml
             - --v=4
-            - --descheduling-interval=3m
+              # - --descheduling-interval=3m

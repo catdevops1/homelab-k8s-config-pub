@@ -25,7 +25,7 @@ spec:
             - /bin/descheduler
             - --policy-config-file=/policy/policy.yaml
             - --v=3
-            - --descheduling-interval=5m
+              # - --descheduling-interval=5m
             resources:
               requests:
                 cpu: 100m
