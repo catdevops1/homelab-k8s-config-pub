@@ -52,6 +52,5 @@ kubectl apply -f gateway-api/routes/example/httproute.yaml
 - [x] CRDs installed
 - [x] Envoy Gateway installed
 - [x] GatewayClass + Gateway created
-- [x] netdata migrated
-- [x] showcase-website migrated
- ingress-nginx removed
+- [x] All applications migrated
+- [x] ingress-nginx removed
