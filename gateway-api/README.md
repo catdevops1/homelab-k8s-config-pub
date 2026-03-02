@@ -54,9 +54,4 @@ kubectl apply -f gateway-api/routes/example/httproute.yaml
 - [x] GatewayClass + Gateway created
 - [x] netdata migrated
 - [x] showcase-website migrated
-- [ ] fleet-track
-- [ ] freight-tracker
-- [ ] job-tracker
-- [ ] argocd
-- [ ] hhoexpress
-- [ ] ingress-nginx removed
+ ingress-nginx removed
