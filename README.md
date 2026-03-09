@@ -1,7 +1,26 @@
 # Homelab Kubernetes Infrastructure (Public)
 Reusable, production-tested Kubernetes infrastructure components for bare-metal homelab clusters.
 
+## Stack
+
+| Component | Version |
+|---|---|
+| Kubernetes | v1.35.0 |
+| Envoy Gateway | v1.5.9 |
+| Gateway API | v1.4.0 |
+| Longhorn | v1.10.1 |
+| OS | Ubuntu 24.04 LTS |
+| Container Runtime | containerd |
+
 ## Infrastructure Components
+
+### Gateway API with Envoy Gateway
+- **Migrated from ingress-nginx** to Kubernetes Gateway API
+- **Envoy Gateway** as the Gateway API implementation
+- **MetalLB** for bare-metal LoadBalancer support
+- **cert-manager + Let's Encrypt** for automated TLS
+- **Cloudflare Tunnel** for external access with zero exposed ports
+- See [gateway-api/README.md](gateway-api/README.md) for full migration guide
 
 ### Longhorn Distributed Storage
 - **3-way replication** across nodes for high availability
@@ -13,30 +32,42 @@ Reusable, production-tested Kubernetes infrastructure components for bare-metal 
 ### Descheduler
 - Automatic pod rebalancing across nodes
 - Optimizes cluster resource utilization
-- Handles node maintenance scenarios
-
-### Node Labels
-- Organize nodes by reliability and workload type
-- Supports UPS-backed vs non-UPS nodes
-- Custom scheduling policies
+- Handles node recovery after failures
+- Three profiles: aggressive, basic, conservative
 
 ## Repository Structure
 ```
 ├── argocd/
-│   └── applications/          # ArgoCD Application manifests
+│   └── applications/              # ArgoCD Application manifests
+│       ├── envoy-gateway-app.yaml
+│       ├── gateway-config-app.yaml
 │       ├── descheduler-app.yaml
 │       └── longhorn-app.yaml
+├── gateway-api/
+│   ├── gateway/                   # GatewayClass, Gateway, TLS, ClusterIssuer
+│   └── routes/example/            # Example HTTPRoute template
 ├── descheduler/
-│   └── overlays/production/   # Descheduler configuration
+│   ├── base/                      # Base Kustomize resources
+│   └── examples/                  # aggressive / basic / conservative profiles
 ├── longhorn/
-│   └── overlays/production/   # Longhorn distributed storage
-├── node-labels/               # Node labeling scripts
-├── docs/                      # Documentation
-│   └── longhorn-migration.md  # Storage migration guide
-└── scripts/                   # Utility scripts
+│   └── overlays/production/
+├── docs/                          # Migration guides and use cases
+└── scripts/                       # Utility and test scripts
 ```
 
 ## Quick Start
+
+### Deploy Gateway API (Envoy Gateway)
+```bash
+# 1. Install Gateway API CRDs
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
+
+# 2. Deploy Envoy Gateway via ArgoCD
+kubectl apply -f argocd/applications/envoy-gateway-app.yaml
+
+# 3. Deploy Gateway config (GatewayClass, Gateway, TLS)
+kubectl apply -f argocd/applications/gateway-config-app.yaml
+```
 
 ### Deploy Longhorn (Distributed Storage)
 ```bash
@@ -45,48 +76,32 @@ kubectl apply -f argocd/applications/longhorn-app.yaml
 
 ### Deploy Descheduler
 ```bash
-kubectl apply -f argocd/applications/descheduler-app.yaml
-```
-
-### Apply Node Labels
-```bash
-./node-labels/apply-labels.sh
+# Choose a profile
+kubectl apply -k descheduler/examples/aggressive/   # fast rebalancing
+kubectl apply -k descheduler/examples/basic/        # default
+kubectl apply -k descheduler/examples/conservative/ # minimal disruption
 ```
 
 ## Cluster Details
 
-**Environment:** Bare-metal Kubernetes  
-**OS:** Ubuntu 24.04 LTS  
-**Kubernetes:** v1.33.3  
-**Container Runtime:** containerd  
+**Environment:** Bare-metal Kubernetes (Mac Mini nodes, no hypervisor)
+**OS:** Ubuntu 24.04 LTS
 **Nodes:** 4-node cluster (1 control-plane, 3 workers)
+**Networking:** MetalLB + Cloudflare Tunnel (no exposed ports)
 
-## Production Applications
-
-This infrastructure supports multiple production applications including:
-- Business management platforms
-- Asset tracking systems
-- Invoice and billing applications
-- Internal tools and dashboards
 ## Key Features
 
-- **High Availability:** Longhorn 3-way replication eliminates single points of failure
 - **GitOps Workflow:** All infrastructure as code, managed via ArgoCD
-- **Automated Operations:** Descheduler handles pod rebalancing automatically
-- **Production-Grade:** Running real business applications with zero downtime SLA
+- **Modern Ingress:** Gateway API replaces legacy Ingress — native traffic splitting, header manipulation, multi-protocol
+- **High Availability:** Longhorn 3-way replication eliminates storage single points of failure
+- **Automated Operations:** Descheduler handles pod rebalancing after node failures
+- **Zero Trust Networking:** Cloudflare Tunnel — no inbound firewall rules required
+- **Production-Grade:** Running real business applications
 
 ## Documentation
 
-- [Longhorn Migration Guide](docs/longhorn-migration.md) - Complete walkthrough of migrating from hostPath to distributed storage
-
-## Future Roadmap
-
-- [ ] Longhorn backup configuration (S3/NFS)
-- [ ] Prometheus & Grafana monitoring stack
-- [ ] Cert-manager automation
-- [ ] MetalLB load balancer configuration
-- [ ] NGINX Ingress controller docs
-
-
-  
-**Last Updated:** December 22, 2025
+- [Gateway API Migration Guide](gateway-api/README.md) - ingress-nginx → Envoy Gateway walkthrough
+- [Longhorn Migration Guide](docs/longhorn-migration.md) - hostPath → distributed storage walkthrough
+- [Descheduler Use Cases](docs/use-cases.md) - configuration scenarios
+- [Installation Guide](docs/installation.md) - getting started
+**Last Updated:** March 2026

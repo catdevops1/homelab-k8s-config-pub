@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: main-tls
+  namespace: envoy-gateway-system
+spec:
+  secretName: main-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - your-domain.com
+    - app.your-domain.com
+    # Add all domains/subdomains served by this gateway
