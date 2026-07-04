@@ -32,6 +32,13 @@ Reusable, production-tested Kubernetes infrastructure components for bare-metal 
 - Zero single points of failure for stateful applications
 - See `docs/longhorn-migration.md` for implementation details
 
+### Cloudflare Tunnel (In-Cluster)
+- Migrated from systemd service on a single node to 2-replica Kubernetes Deployment
+- `topologySpreadConstraints` ensure replicas run on different physical nodes
+- Credentials managed by HashiCorp Vault + External Secrets Operator
+- Zero-downtime migration using Cloudflare's multi-connector support
+- See `docs/cloudflared-migration.md` for the full migration walkthrough
+
 ### Descheduler
 - Automatic pod rebalancing across nodes
 - Optimizes cluster resource utilization
@@ -51,16 +58,22 @@ An example ExternalSecret for wiring an app to Vault is in `external-secrets-con
 ```
 ├── argocd/
 │   └── applications/              # ArgoCD Application manifests
+│       ├── cloudflared-app.yaml
 │       ├── envoy-gateway-app.yaml
 │       ├── gateway-config-app.yaml
 │       ├── descheduler-app.yaml
 │       └── longhorn-app.yaml
+├── cloudflared/                   # In-cluster Cloudflare Tunnel
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   └── deployment.yaml
 ├── descheduler/
 │   ├── base/                      # Base Kustomize resources
 │   └── examples/                  # aggressive / basic / conservative profiles
 ├── docs/                          # Migration guides and use cases
 ├── external-secrets-configs/
-│   └── cluster-ai/                # Example ExternalSecret for app secrets
+│   ├── cloudflared/               # Tunnel credentials via Vault
+│   └── cluster-ai/               # Example ExternalSecret for app secrets
 ├── gateway-api/
 │   ├── gateway/                   # GatewayClass, Gateway, TLS, ClusterIssuer
 │   └── routes/example/            # Example HTTPRoute template
@@ -90,6 +103,13 @@ kubectl apply -f argocd/applications/gateway-config-app.yaml
 kubectl apply -f argocd/applications/longhorn-app.yaml
 ```
 
+### Deploy Cloudflare Tunnel (In-Cluster)
+```bash
+# 1. Store tunnel credentials in Vault (see docs/cloudflared-migration.md)
+# 2. Deploy via ArgoCD
+kubectl apply -f argocd/applications/cloudflared-app.yaml
+```
+
 ### Deploy Descheduler
 ```bash
 # Choose a profile
@@ -112,6 +132,7 @@ kubectl apply -k descheduler/examples/conservative/ # minimal disruption
 
 - **GitOps Workflow** — All infrastructure as code, managed via ArgoCD
 - **Modern Ingress** — Gateway API replaces legacy Ingress — native traffic splitting, header manipulation, multi-protocol
+- **Resilient Tunnel** — Multi-replica cloudflared with topology-aware scheduling, no single node dependency
 - **High Availability** — Longhorn 3-way replication eliminates storage single points of failure
 - **Automated Operations** — Descheduler handles pod rebalancing after node failures
 - **Zero Trust Networking** — Cloudflare Tunnel, no inbound firewall rules required
@@ -122,6 +143,7 @@ kubectl apply -k descheduler/examples/conservative/ # minimal disruption
 ## Documentation
 
 - `gateway-api/README.md` — ingress-nginx → Envoy Gateway migration guide
+- `docs/cloudflared-migration.md` — systemd → in-cluster tunnel migration
 - `docs/longhorn-migration.md` — hostPath → distributed storage walkthrough
 - `docs/use-cases.md` — descheduler configuration scenarios
 - `docs/installation.md` — getting started guide
@@ -135,4 +157,4 @@ kubectl apply -k descheduler/examples/conservative/ # minimal disruption
 
 ---
 
-*Last Updated: April 2026*
+*Last Updated: July 2026*
