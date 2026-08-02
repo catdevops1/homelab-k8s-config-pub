@@ -1,6 +1,6 @@
-# Homelab Kubernetes Infrastructure (Public) ⎈
+# Kubernetes Infrastructure (Public) ⎈
 
-Reusable, production-tested Kubernetes infrastructure components for bare-metal homelab clusters.
+Reusable, production-tested Kubernetes infrastructure components for bare-metal clusters.
 
 ## Stack
 
@@ -157,4 +157,4 @@ kubectl apply -k descheduler/examples/conservative/ # minimal disruption
 
 ---
 
-*Last Updated: July 2026*
+*Last Updated: August 2026*
