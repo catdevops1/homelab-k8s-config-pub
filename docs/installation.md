@@ -9,8 +9,8 @@
 ## Method 1: Direct kubectl
 ```bash
 # Clone the repo
-git clone https://github.com/catdevops1/homelab-k8s-config-pub.git
-cd homelab-k8s-config-pub
+git clone https://github.com/catdevops1/k8s-config-pub.git
+cd k8s-config-pub
 
 # Deploy with default settings
 kubectl apply -k descheduler/base/
@@ -30,7 +30,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/catdevops1/homelab-k8s-config-pub.git
+    repoURL: https://github.com/catdevops1/k8s-config-pub.git
     targetRevision: main
     path: descheduler/examples/aggressive
   destination:
@@ -73,7 +73,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- github.com/catdevops1/homelab-k8s-config-pub/descheduler/base
+- github.com/catdevops1/k8s-config-pub/descheduler/base
 
 patchesStrategicMerge:
 - configmap-patch.yaml

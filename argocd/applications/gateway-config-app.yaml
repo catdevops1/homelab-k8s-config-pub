@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/<YOUR-USERNAME>/<YOUR-REPO>.git
+    repoURL: https://github.com/catdevops1/k8s-config-pub.git
     targetRevision: main
     path: gateway-api/gateway
   destination:
