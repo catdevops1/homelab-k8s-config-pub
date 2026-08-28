@@ -124,6 +124,29 @@ spec:
 Tunnel CNAMEs keep the default (`["*"]`) so drift correction stays active on
 records that actually change.
 
+`deletionPolicy: Orphan` is the Crossplane v1 equivalent and is not supported
+by this provider — `managementPolicies` replaces it.
+
+### Observe records need a compound external-name
+
+A record under `Observe` cannot be created, so Crossplane's only way to learn
+about it is to import it — and the Terraform provider underneath requires a
+compound ID for imports:
+
+```yaml
+# fully managed - bare record id is fine
+crossplane.io/external-name: "726dffa4a8d7f9bcaa026b36d4f64511"
+
+# Observe only - needs zone_id/record_id
+crossplane.io/external-name: "<zone_id>/726dffa4a8d7f9bcaa026b36d4f64511"
+```
+
+With the bare ID the record reports `SYNCED: False` and the provider logs
+`Error: invalid ID — expected urlencoded segments "<zone_id>/<dns_record_id>"`.
+`READY` stays `True` and the real Cloudflare record is never touched, so this
+is noisy but harmless. Fully managed records never take the import path and so
+never hit it.
+
 ## Recovering from stuck terminating records
 
 If Argo CD prunes the Record objects, they enter a terminating state held by
