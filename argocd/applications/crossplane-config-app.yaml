@@ -1,3 +1,6 @@
+# Installs provider-cloudflare-dns and its ProviderConfig from the crossplane repo.
+# Requires Crossplane core (crossplane-helm-app.yaml) to be healthy first.
+# See docs/crossplane.md for sync options and why they are needed.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

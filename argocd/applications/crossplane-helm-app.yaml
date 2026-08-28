@@ -1,4 +1,6 @@
-# argocd/applications/crossplane-helm-app.yaml
+# Installs Crossplane core from the official Helm chart into crossplane-system.
+# Must be healthy before crossplane-config-app.yaml is applied.
+# See docs/crossplane.md for the full deployment order.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

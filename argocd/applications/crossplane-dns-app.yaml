@@ -1,3 +1,6 @@
+# Applies the Cloudflare DNS records from the crossplane repo.
+# Requires the provider to report HEALTHY before this will sync.
+# Email records are Observe-only - see docs/crossplane.md.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
