@@ -90,6 +90,7 @@ Example ExternalSecrets for wiring apps to Vault are in `external-secrets-config
 │   ├── cloudflared/               # Tunnel credentials via Vault
 │   ├── crossplane/                # Cloudflare API token via Vault
 │   ├── cluster-ai/                # Example ExternalSecret for app secrets
+│   ├── job-tracker/               # App secrets - postgres and backend
 │   └── netdata/                   # Monitoring credentials
 ├── gateway-api/
 │   ├── gateway/                   # GatewayClass, Gateway, TLS, ClusterIssuer
