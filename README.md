@@ -5,19 +5,20 @@ Reusable, production-tested Kubernetes infrastructure components for bare-metal 
 ## Stack
 
 | Component | Version |
-|-----------|---------|
+|---|---|
 | Kubernetes | v1.35.0 |
 | Envoy Gateway | v1.5.9 |
 | Gateway API | v1.4.0 |
 | Longhorn | v1.10.1 |
+| Crossplane | v2.3.2 |
+| provider-cloudflare-dns | v0.1.3 |
 | OS | Ubuntu 24.04 LTS |
 | Container Runtime | containerd |
-
----
 
 ## Infrastructure Components
 
 ### Gateway API with Envoy Gateway
+
 - Migrated from ingress-nginx to Kubernetes Gateway API
 - Envoy Gateway as the Gateway API implementation
 - MetalLB for bare-metal LoadBalancer support
@@ -26,6 +27,7 @@ Reusable, production-tested Kubernetes infrastructure components for bare-metal 
 - See `gateway-api/README.md` for full migration guide
 
 ### Longhorn Distributed Storage
+
 - 3-way replication across nodes for high availability
 - Automatic failover for persistent volumes
 - GitOps deployment via ArgoCD
@@ -33,25 +35,35 @@ Reusable, production-tested Kubernetes infrastructure components for bare-metal 
 - See `docs/longhorn-migration.md` for implementation details
 
 ### Cloudflare Tunnel (In-Cluster)
+
 - Migrated from systemd service on a single node to 2-replica Kubernetes Deployment
 - `topologySpreadConstraints` ensure replicas run on different physical nodes
 - Credentials managed by HashiCorp Vault + External Secrets Operator
 - Zero-downtime migration using Cloudflare's multi-connector support
 - See `docs/cloudflared-migration.md` for the full migration walkthrough
 
+### Crossplane (Cloudflare as Code)
+
+- DNS records managed as Kubernetes CRDs, reconciled continuously by Crossplane
+- Existing Cloudflare records adopted via `crossplane.io/external-name` — no re-creation, no downtime
+- Email records (MX, DKIM, SPF, DMARC) use `managementPolicies: ["Observe"]` — watched but never modified
+- API token sourced from Vault via External Secrets Operator, never committed to Git
+- Three-app structure enforces ordering: Crossplane core → provider + ProviderConfig → DNS records
+- `application.resourceTrackingMethod: annotation` required in `argocd-cm` for correct Crossplane resource tracking
+- See `docs/crossplane.md` for setup and adoption walkthrough
+
 ### Descheduler
+
 - Automatic pod rebalancing across nodes
 - Optimizes cluster resource utilization
 - Handles node recovery after failures
 - Three profiles: aggressive, basic, conservative
 
 ### Secrets Management
-For HashiCorp Vault + External Secrets Operator + AWS KMS auto-unseal, see the dedicated repo:
-[`vault-config-pub`](https://github.com/catdevops1/vault-config-pub)
 
-An example ExternalSecret for wiring an app to Vault is in `external-secrets-configs/cluster-ai/`.
+For HashiCorp Vault + External Secrets Operator + AWS KMS auto-unseal, see the dedicated repo: [vault-config-pub](https://github.com/catdevops1/vault-config-pub)
 
----
+Example ExternalSecrets for wiring apps to Vault are in `external-secrets-configs/`.
 
 ## Repository Structure
 
@@ -59,6 +71,9 @@ An example ExternalSecret for wiring an app to Vault is in `external-secrets-con
 ├── argocd/
 │   └── applications/              # ArgoCD Application manifests
 │       ├── cloudflared-app.yaml
+│       ├── crossplane-helm-app.yaml      # Crossplane core
+│       ├── crossplane-config-app.yaml    # provider + ProviderConfig
+│       ├── crossplane-dns-app.yaml       # DNS records
 │       ├── envoy-gateway-app.yaml
 │       ├── gateway-config-app.yaml
 │       ├── descheduler-app.yaml
@@ -73,7 +88,9 @@ An example ExternalSecret for wiring an app to Vault is in `external-secrets-con
 ├── docs/                          # Migration guides and use cases
 ├── external-secrets-configs/
 │   ├── cloudflared/               # Tunnel credentials via Vault
-│   └── cluster-ai/               # Example ExternalSecret for app secrets
+│   ├── crossplane/                # Cloudflare API token via Vault
+│   ├── cluster-ai/                # Example ExternalSecret for app secrets
+│   └── netdata/                   # Monitoring credentials
 ├── gateway-api/
 │   ├── gateway/                   # GatewayClass, Gateway, TLS, ClusterIssuer
 │   └── routes/example/            # Example HTTPRoute template
@@ -82,11 +99,10 @@ An example ExternalSecret for wiring an app to Vault is in `external-secrets-con
 └── scripts/                       # Utility and test scripts
 ```
 
----
-
 ## Quick Start
 
 ### Deploy Gateway API (Envoy Gateway)
+
 ```bash
 # 1. Install Gateway API CRDs
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
@@ -99,18 +115,42 @@ kubectl apply -f argocd/applications/gateway-config-app.yaml
 ```
 
 ### Deploy Longhorn (Distributed Storage)
+
 ```bash
 kubectl apply -f argocd/applications/longhorn-app.yaml
 ```
 
 ### Deploy Cloudflare Tunnel (In-Cluster)
+
 ```bash
 # 1. Store tunnel credentials in Vault (see docs/cloudflared-migration.md)
 # 2. Deploy via ArgoCD
 kubectl apply -f argocd/applications/cloudflared-app.yaml
 ```
 
+### Deploy Crossplane (Cloudflare as Code)
+
+```bash
+# 1. Store the Cloudflare API token in Vault as JSON
+#    vault kv put secret/cloudflare/credentials \
+#      credentials='{"api_token":"YOUR_TOKEN"}'
+
+# 2. Set annotation-based resource tracking (required for Crossplane)
+kubectl patch configmap argocd-cm -n argocd --type merge \
+  -p '{"data":{"application.resourceTrackingMethod":"annotation"}}'
+
+# 3. Install Crossplane core
+kubectl apply -f argocd/applications/crossplane-helm-app.yaml
+
+# 4. Install the provider and ProviderConfig (wait for core to be healthy first)
+kubectl apply -f argocd/applications/crossplane-config-app.yaml
+
+# 5. Apply DNS records (wait for the provider to report HEALTHY)
+kubectl apply -f argocd/applications/crossplane-dns-app.yaml
+```
+
 ### Deploy Descheduler
+
 ```bash
 # Choose a profile
 kubectl apply -k descheduler/examples/aggressive/   # fast rebalancing
@@ -118,15 +158,11 @@ kubectl apply -k descheduler/examples/basic/        # default
 kubectl apply -k descheduler/examples/conservative/ # minimal disruption
 ```
 
----
-
 ## Cluster Details
 
-- **Environment:** Bare-metal Kubernetes (no hypervisor)
-- **OS:** Ubuntu 24.04 LTS
-- **Networking:** MetalLB + Cloudflare Tunnel (no exposed ports)
-
----
+- **Environment**: Bare-metal Kubernetes (no hypervisor)
+- **OS**: Ubuntu 24.04 LTS
+- **Networking**: MetalLB + Cloudflare Tunnel (no exposed ports)
 
 ## Key Features
 
@@ -134,26 +170,25 @@ kubectl apply -k descheduler/examples/conservative/ # minimal disruption
 - **Modern Ingress** — Gateway API replaces legacy Ingress — native traffic splitting, header manipulation, multi-protocol
 - **Resilient Tunnel** — Multi-replica cloudflared with topology-aware scheduling, no single node dependency
 - **High Availability** — Longhorn 3-way replication eliminates storage single points of failure
+- **Infrastructure as Code Beyond the Cluster** — Crossplane extends GitOps to Cloudflare DNS with continuous drift correction
 - **Automated Operations** — Descheduler handles pod rebalancing after node failures
 - **Zero Trust Networking** — Cloudflare Tunnel, no inbound firewall rules required
 - **Production-Grade** — Running real applications with CI/CD pipelines
-
----
 
 ## Documentation
 
 - `gateway-api/README.md` — ingress-nginx → Envoy Gateway migration guide
 - `docs/cloudflared-migration.md` — systemd → in-cluster tunnel migration
 - `docs/longhorn-migration.md` — hostPath → distributed storage walkthrough
+- `docs/crossplane.md` — Cloudflare DNS as code with Crossplane
 - `docs/use-cases.md` — descheduler configuration scenarios
 - `docs/installation.md` — getting started guide
 
----
-
 ## Related Repos
 
-- [`vault-config-pub`](https://github.com/catdevops1/vault-config-pub) — HashiCorp Vault + External Secrets Operator + AWS KMS auto-unseal
-- [`cluster-ai`](https://github.com/catdevops1/cluster-ai) — Natural language Kubernetes assistant (FastAPI + React + Ollama + Claude)
+- [vault-config-pub](https://github.com/catdevops1/vault-config-pub) — HashiCorp Vault + External Secrets Operator + AWS KMS auto-unseal
+- [crossplane](https://github.com/catdevops1/crossplane) — Cloudflare DNS and Zero Trust as code via Crossplane
+- [cluster-ai](https://github.com/catdevops1/cluster-ai) — Natural language Kubernetes assistant (FastAPI + React + Ollama + Claude)
 
 ---
 
